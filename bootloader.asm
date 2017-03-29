@@ -16,10 +16,11 @@ VIDEO_PRINT equ 0x0e
 MIN_USERNAME_LENGTH equ 3
 MAX_USERNAME_LENGTH equ 12
 
-; Welcome message
-WELCOME_MSG: db 'Enter your name', ASCII_RETURN, ASCII_NEWLINE, ASCII_NULL
-; Reserved 12 bytes for username
-NAME: resb MAX_USERNAME_LENGTH
+; CONST STRINGS
+INPUT_MESSAGE: db 'Enter your name', ASCII_RETURN, ASCII_NEWLINE, ASCII_NULL
+WELCOME_MESSAGE: db 'Hello '
+NAME: db ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL
+ENDL: db ASCII_RETURN, ASCII_NEWLINE, ASCII_NULL
 
 ; Prints character
 ; @param `al` character to print
@@ -72,8 +73,8 @@ init_stack:
     mov sp, 0x8000
 
 ; Prints "Enter your name\r\n" message
-welcome:
-    mov ax, WELCOME_MSG
+input:
+    mov ax, INPUT_MESSAGE
     call print
 
 ; Reads characters
@@ -94,6 +95,12 @@ read_username_loop:
 
 read_username_char:
     call print_char
+
+    ; Set NAME[index] to character in al
+    mov bx, NAME
+    add bx, cx
+    mov [bx], al
+
     inc cx
     jmp read_username_loop
 
@@ -109,6 +116,11 @@ read_username_backspace:
     mov al, ASCII_BACKSPACE
     call print_char
 
+    ; Set NAME[index] to null character
+    mov bx, NAME
+    add bx, cx
+    mov byte [bx], ASCII_NULL
+
     ; Decrease length
     dec cx
     jmp read_username_loop
@@ -122,8 +134,16 @@ read_username_return:
     jmp read_username_loop
 
 read_username_end:
-    mov al, '#'
-    call print_char
+    ; Print endl
+    mov ax, ENDL
+    call print
+    ; Print welcome message and name as WELCOME_MESSAGE is not null
+    ; terminated and NAME is in memory right after WELCOME_MESSAGE
+    mov ax, WELCOME_MESSAGE
+    call print
+    ; Print endl
+    mov ax, ENDL
+    call print
 
 ; Dopełnienie zerami i dodanie sekwencji aa55
 times (510 - $ + $$) db 0
