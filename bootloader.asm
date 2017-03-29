@@ -22,6 +22,24 @@ WELCOME_MESSAGE: db 'Hello '
 NAME: db ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL
 ENDL: db ASCII_RETURN, ASCII_NEWLINE, ASCII_NULL
 
+; Sets bx to NAME[%1] pointer
+%macro get_name_index 1
+    mov bx, NAME
+    add bx, %1
+%endmacro
+
+; Wrapper for print_char function
+%macro print_char_macro 1
+    mov al, %1
+    call print_char
+%endmacro
+
+; Wrapper for print function
+%macro print_macro 1
+    mov ax, %1
+    call print
+%endmacro
+
 ; Prints character
 ; @param `al` character to print
 print_char:
@@ -58,7 +76,7 @@ print_loop:
 print_end:
     ret
 
-; Main
+
 start:
 
 ; Sets all registers to 0
@@ -97,10 +115,10 @@ read_username_char:
     call print_char
 
     ; Set NAME[index] to character in al
-    mov bx, NAME
-    add bx, cx
+    get_name_index cx
     mov [bx], al
 
+    ; Increase length and continue
     inc cx
     jmp read_username_loop
 
@@ -111,14 +129,11 @@ read_username_backspace:
 
     ; Remove previous character from screen
     call print_char
-    mov al, ASCII_SPACE
-    call print_char
-    mov al, ASCII_BACKSPACE
-    call print_char
+    print_char_macro ASCII_SPACE
+    print_char_macro ASCII_BACKSPACE
 
     ; Set NAME[index] to null character
-    mov bx, NAME
-    add bx, cx
+    get_name_index cx
     mov byte [bx], ASCII_NULL
 
     ; Decrease length
@@ -126,7 +141,7 @@ read_username_backspace:
     jmp read_username_loop
 
 read_username_return:
-    ; If length >= 3 finish input
+    ; If the name is long enough go to end
     cmp cx, MIN_USERNAME_LENGTH
     jge read_username_end
 
@@ -135,16 +150,15 @@ read_username_return:
 
 read_username_end:
     ; Print endl
-    mov ax, ENDL
-    call print
+    print_macro ENDL
+
     ; Print welcome message and name as WELCOME_MESSAGE is not null
     ; terminated and NAME is in memory right after WELCOME_MESSAGE
-    mov ax, WELCOME_MESSAGE
-    call print
-    ; Print endl
-    mov ax, ENDL
-    call print
+    print_macro WELCOME_MESSAGE
 
-; Dopełnienie zerami i dodanie sekwencji aa55
+    ; Print endl
+    print_macro ENDL
+
+; Fill the rest with zeros and add 0xaa55 sequence
 times (510 - $ + $$) db 0
 dw 0xaa55
