@@ -10,8 +10,10 @@ ASCII_SPACE equ 0x20
 
 INT_VECTOR_KEYBOARD equ 0x16
 INT_VECTOR_VIDEO equ 0x10
+INT_VECTOR_MISC equ 0x15
 
 VIDEO_PRINT equ 0x0e
+MISC_WAIT equ 0x86
 
 MIN_USERNAME_LENGTH equ 3
 MAX_USERNAME_LENGTH equ 12
@@ -38,6 +40,11 @@ ENDL: db ASCII_RETURN, ASCII_NEWLINE, ASCII_NULL
 %macro print_macro 1
     mov ax, %1
     call print
+%endmacro
+
+; Sleep for 2 seconds
+%macro wait_2s 0
+
 %endmacro
 
 ; Prints character
@@ -158,6 +165,15 @@ read_username_end:
 
     ; Print endl
     print_macro ENDL
+
+wait_2s:
+    ; Low word
+    mov dx, 0x8480
+    ; High word
+    mov cx, 0x1e
+    ; 0x8480 + 0x1e = 0x1e8480
+    mov ah, MISC_WAIT
+    int INT_VECTOR_MISC
 
 ; Fill the rest with zeros and add 0xaa55 sequence
 times (510 - $ + $$) db 0
