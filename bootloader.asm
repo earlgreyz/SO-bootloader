@@ -57,12 +57,12 @@ DRIVE: dw 0x00
 %macro prepare_drive 1
   ; Source (Destination) sector = %1
   mov cl, %1
-  ; Sectors Count = 1
-  mov al, 0x01
   ; Track = 0
   xor ch, ch
   ; Head = 0
   xor dh, dh
+  ; Sectors Count = 1
+  mov al, 0x01
   ; Set drive
   mov dl, [DRIVE]
 %endmacro
@@ -220,16 +220,16 @@ copy_minix_bootloader:
     prepare_drive 0x02
 
     ; Set destination to standard bootloader place
-    mov ah, 0x02
-    mov al, 0x01
-    xor ch, ch
-    mov cl, 0x02
-    xor dh, dh
-    mov dl, [DRIVE]
     mov bx, 0x7c00
-    int 0x13
 
-    jmp 0x7c00
+    ; For some reason it has to be done once more
+    mov ch, 0x00
+    mov dh, 0x00
+    mov dl, [DRIVE]
+
+    read_sectors
+
+    jmp bx
 
 
 ; Fill the rest with zeros and add 0xaa55 sequence
