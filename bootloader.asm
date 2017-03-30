@@ -8,12 +8,15 @@ ASCII_NEWLINE equ 0x0a
 ASCII_NULL equ 0x00
 ASCII_SPACE equ 0x20
 
-INT_VECTOR_KEYBOARD equ 0x16
 INT_VECTOR_VIDEO equ 0x10
+INT_VECTOR_DRIVE equ 0x13
 INT_VECTOR_MISC equ 0x15
+INT_VECTOR_KEYBOARD equ 0x16
 
 VIDEO_PRINT equ 0x0e
 MISC_WAIT equ 0x86
+DRIVE_READ_SECTOR equ 0x02
+DRIVE_WRITE_SECTOR equ 0x03
 
 MIN_USERNAME_LENGTH equ 3
 MAX_USERNAME_LENGTH equ 12
@@ -23,6 +26,7 @@ INPUT_MESSAGE: db 'Enter your name', ASCII_RETURN, ASCII_NEWLINE, ASCII_NULL
 WELCOME_MESSAGE: db 'Hello '
 NAME: db ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL, ASCII_NULL
 ENDL: db ASCII_RETURN, ASCII_NEWLINE, ASCII_NULL
+DRIVE: dw 0x00
 
 ; Sets bx to NAME[%1] pointer
 %macro get_name_index 1
@@ -42,9 +46,37 @@ ENDL: db ASCII_RETURN, ASCII_NEWLINE, ASCII_NULL
     call print
 %endmacro
 
-; Sleep for 2 seconds
-%macro wait_2s 0
+; Call wait sectors BIOS interrupt
+%macro wait 0
+  mov ah, MISC_WAIT
+  int INT_VECTOR_MISC
+%endmacro
 
+; Prepares registers for drive sector read (write)
+; @param 1 source (destination) for read (write)
+%macro prepare_drive 1
+  ; Source (Destination) sector = %1
+  mov cl, %1
+  ; Sectors Count = 1
+  mov al, 0x01
+  ; Track = 0
+  xor ch, ch
+  ; Head = 0
+  xor dh, dh
+  ; Set drive
+  mov dl, [DRIVE]
+%endmacro
+
+; Call write sectors BIOS interrupt
+%macro write_sectors 0
+    mov ah, DRIVE_WRITE_SECTOR
+    int INT_VECTOR_DRIVE
+%endmacro
+
+; Call read sectors BIOS interrupt
+%macro read_sectors 0
+    mov ah, DRIVE_READ_SECTOR
+    int INT_VECTOR_DRIVE
 %endmacro
 
 ; Prints character
@@ -86,23 +118,27 @@ print_end:
 
 start:
 
-; Sets all registers to 0
 init_registers:
+    ; Save drive number for future operations
+    mov [DRIVE], dl
+
+    ; Set all registers to 0
     mov ax, cs
     mov ds, ax
     mov es, ax
     mov ss, ax
 
-; Initializes stack
+
+; Initialize stack
 init_stack:
     mov sp, 0x8000
 
-; Prints "Enter your name\r\n" message
+; Print "Enter your name\r\n" message
 input:
     mov ax, INPUT_MESSAGE
     call print
 
-; Reads characters
+; Read characters
 read_username:
     xor cx, cx
 
@@ -166,14 +202,35 @@ read_username_end:
     ; Print endl
     print_macro ENDL
 
+save_username:
+    prepare_drive 0x03
+
+    ; Set source address to NAME
+    mov bx, NAME
+
+    write_sectors
+
 wait_2s:
-    ; Low word
+    ; 0x8480 + 0xffff * 0x1e = 0x1e8480
     mov dx, 0x8480
-    ; High word
     mov cx, 0x1e
-    ; 0x8480 + 0x1e = 0x1e8480
-    mov ah, MISC_WAIT
-    int INT_VECTOR_MISC
+    wait
+
+copy_minix_bootloader:
+    prepare_drive 0x02
+
+    ; Set destination to standard bootloader place
+    mov ah, 0x02
+    mov al, 0x01
+    xor ch, ch
+    mov cl, 0x02
+    xor dh, dh
+    mov dl, [DRIVE]
+    mov bx, 0x7c00
+    int 0x13
+
+    jmp 0x7c00
+
 
 ; Fill the rest with zeros and add 0xaa55 sequence
 times (510 - $ + $$) db 0
