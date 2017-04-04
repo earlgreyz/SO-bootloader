@@ -216,22 +216,30 @@ wait_2s:
     mov cx, 0x1e
     wait
 
-copy_minix_bootloader:
+load_copy_instructions:
     prepare_drive 0x02
+    mov bx, 0x7e00
+    read_sectors
+    jmp 0x7e00
+
+; Fill the rest with zeros and add 0xaa55 sequence
+times (510 - $ + $$) db 0
+dw 0xaa55
+
+; Second drive secotor (won't be overriden by drive load)
+copy_minix_bootloader:
+    prepare_drive 0x04
 
     ; Set destination to standard bootloader place
     mov bx, 0x7c00
 
     ; For some reason it has to be done once more
-    mov ch, 0x00
-    mov dh, 0x00
-    mov dl, [DRIVE]
+    ;mov ch, 0x00
+    ;mov dh, 0x00
+    ;mov dl, [DRIVE]
 
     read_sectors
 
-    jmp bx
+    jmp 0x7c00
 
-
-; Fill the rest with zeros and add 0xaa55 sequence
-times (510 - $ + $$) db 0
-dw 0xaa55
+times (1024 - $ + $$) db 0
