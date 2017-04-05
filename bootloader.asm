@@ -232,12 +232,6 @@ copy_minix_bootloader:
 
     ; Set destination to standard bootloader place
     mov bx, 0x7c00
-
-    ; For some reason it has to be done once more
-    ;mov ch, 0x00
-    ;mov dh, 0x00
-    ;mov dl, [DRIVE]
-
     read_sectors
 
     jmp 0x7c00
